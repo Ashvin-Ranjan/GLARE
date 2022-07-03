@@ -1,5 +1,6 @@
+use crate::reload_data;
 use serde_json::Value;
-use std::sync::Mutex;
+use tokio::sync::Mutex;
 use warp::{
     http::Response,
     reject::{custom, Reject, Rejection},
@@ -19,7 +20,7 @@ pub enum ApiFailure {
 impl Reject for ApiFailure {}
 
 pub async fn api_data_handler() -> Result<impl Reply, Rejection> {
-    match DATA.lock() {
+    match DATA.try_lock() {
         Ok(d) => {
             return Ok(Response::builder()
                 .header("Content-Type", "application/json; charset=utf-8")
@@ -33,11 +34,6 @@ pub async fn api_data_handler() -> Result<impl Reply, Rejection> {
 }
 
 pub async fn api_reload_handler() -> Result<impl Reply, Rejection> {
-    let lock = DATA.try_lock();
-    if let Ok(_) = lock {
-        // TODO: Reloading
-        return Ok("Reloading...");
-    } else {
-        return Err(custom(ApiFailure::DataLocked));
-    }
+    reload_data().await;
+    return Ok("Reloading...");
 }

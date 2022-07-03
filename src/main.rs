@@ -6,7 +6,8 @@ extern crate lazy_static;
 
 use clap::Parser;
 use colored::Colorize;
-use std::{fs, sync::Mutex};
+use std::fs;
+use tokio::sync::Mutex;
 use utils::err::FormatUnpack;
 
 mod data;
@@ -57,15 +58,15 @@ struct Args {
 }
 
 pub async fn reload_data() {
-    if let Ok(mut d) = handlers::DATA.lock() {
+    if let Ok(mut d) = handlers::DATA.try_lock() {
         let mut p = None;
-        if let Ok(t) = POSSIBLE_TOKEN.lock() {
+        if let Ok(t) = POSSIBLE_TOKEN.try_lock() {
             match &*t {
                 Some(s) => p = Some(s.to_owned()),
                 None => p = None,
             }
         }
-        let pr_data = data::aggregate_data(
+        *d = data::aggregate_data(
             ARGS.author.to_owned(),
             ARGS.name.to_owned(),
             ARGS.teams,
@@ -75,7 +76,6 @@ pub async fn reload_data() {
         )
         .await
         .fup(ARGS.no_pretty_errors);
-        *d = pr_data
     }
 }
 
@@ -94,7 +94,7 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    if let Ok(mut t) = POSSIBLE_TOKEN.lock() {
+    if let Ok(mut t) = POSSIBLE_TOKEN.try_lock() {
         *t = match fs::read_to_string(".token") {
             Ok(data) => Some(data),
             Err(_) => None,
@@ -113,7 +113,7 @@ async fn main() -> anyhow::Result<()> {
         .await
         .fup(ARGS.no_pretty_errors);
 
-        match handlers::DATA.lock() {
+        match handlers::DATA.try_lock() {
             Ok(mut d) => *d = pr_data,
             Err(_) => Err(format!(
                 "`{}` variable is locked when it should not be.",

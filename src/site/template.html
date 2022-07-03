@@ -179,9 +179,11 @@
 </header>
 
 <body>
-  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <h1 class="section-title">Requests Reviewed and Responded</h1>
-  <article id="chart_div" class="chart-card" style="height: 95vh"></article>
+  <div>
+    <canvas id="chart_div" class="chart-card" style="height: 95vh"></canvas>
+  </div>
   <h1 class="section-title">Per-User Stats</h1>
   <div id="stats_div" class="stats-area"></div>
   <h1 class="section-title">Overall Stats</h1>
@@ -212,122 +214,143 @@
     </article>
   </div>
   <script>
-    const loadAndDrawData = () => {
-      fetch("/api/data").then(
-        (response) => {
-          response.json().then((fullData) => {
-            const info = fullData["info"];
-            const overall = fullData["overall"];
-            let value = fullData["data"];
+    fetch("/api/data").then(
+      (response) => {
+        response.json().then((fullData) => {
+          const info = fullData["info"];
+          const overall = fullData["overall"];
+          let value = fullData["data"];
 
-            const sortingMethod = (new URLSearchParams(window.location.search)).get('sort');
+          const sortingMethod = (new URLSearchParams(window.location.search)).get('sort');
 
-            if (sortingMethod == 1) {
-              value = Object.keys(value).sort((a, b) => {
-                return value[b].times_responded - value[a].times_responded;
-              }).reduce(
-                (obj, key) => {
-                  obj[key] = value[key];
-                  return obj;
-                },
-                {}
-              );
-            } else if (sortingMethod == 2) {
-              value = Object.keys(value).sort((a, b) => {
-                const aRequested = Math.ceil((value[a].times_responded / value[a].times_requested) * 100);
-                const bRequested = Math.ceil((value[b].times_responded / value[b].times_requested) * 100);
-                if (bRequested - aRequested !== 0) {
-                  return bRequested - aRequested;
-                }
-                if (value[a].times_responded > value[b].times_responded) {
-                  return -1;
-                }
-                if (value[a].times_responded < value[b].times_responded) {
-                  return 1;
-                }
-                return 0;
-              }).reduce(
-                (obj, key) => {
-                  obj[key] = value[key];
-                  return obj;
-                },
-                {}
-              );
-            } else {
-              value = Object.keys(value).sort((a, b) => {
-                if (value[b].times_requested - value[a].times_requested !== 0) {
-                  return value[b].times_requested - value[a].times_requested
-                }
-                if (value[a].times_responded > value[b].times_responded) {
-                  return -1
-                }
-                if (value[a].times_responded < value[b].times_responded) {
-                  return 1
-                }
-                return 0
-              }).reduce(
-                (obj, key) => {
-                  obj[key] = value[key];
-                  return obj;
-                },
-                {}
-              );
-            }
-
-            const rows = [['Name', 'Reviews Responded', 'Reviews Unresponded', { role: 'annotation' }]];
-
-            for (const key of Object.keys(value)) {
-              if (value[key].times_requested) {
-                rows.push([key, value[key].times_responded, value[key].times_requested - value[key].times_responded, '']);
-              }
-            }
-
-            const data = google.visualization.arrayToDataTable(rows);
-
-            const options = {
-              title: '',
-              chartArea: { width: '75%' },
-              width: '100%',
-              height: '100%',
-              hAxis: {
-                title: 'Reviews Requested/Responded',
-                minValue: 0,
+          if (sortingMethod == 1) {
+            value = Object.keys(value).sort((a, b) => {
+              return value[b].times_responded - value[a].times_responded;
+            }).reduce(
+              (obj, key) => {
+                obj[key] = value[key];
+                return obj;
               },
-              vAxis: {
-                title: 'Name',
-                textStyle: {
-                  fontSize: 10 // or the number you want
+              {}
+            );
+          } else if (sortingMethod == 2) {
+            value = Object.keys(value).sort((a, b) => {
+              const aRequested = Math.ceil((value[a].times_responded / value[a].times_requested) * 100);
+              const bRequested = Math.ceil((value[b].times_responded / value[b].times_requested) * 100);
+              if (bRequested - aRequested !== 0) {
+                return bRequested - aRequested;
+              }
+              if (value[a].times_responded > value[b].times_responded) {
+                return -1;
+              }
+              if (value[a].times_responded < value[b].times_responded) {
+                return 1;
+              }
+              return 0;
+            }).reduce(
+              (obj, key) => {
+                obj[key] = value[key];
+                return obj;
+              },
+              {}
+            );
+          } else {
+            value = Object.keys(value).sort((a, b) => {
+              if (value[b].times_requested - value[a].times_requested !== 0) {
+                return value[b].times_requested - value[a].times_requested
+              }
+              if (value[a].times_responded > value[b].times_responded) {
+                return -1
+              }
+              if (value[a].times_responded < value[b].times_responded) {
+                return 1
+              }
+              return 0
+            }).reduce(
+              (obj, key) => {
+                obj[key] = value[key];
+                return obj;
+              },
+              {}
+            );
+          }
+
+          let datasets = [[], [], []];
+
+          for (const key of Object.keys(value)) {
+            if (value[key].times_requested) {
+              datasets[0].push(key);
+              datasets[1].push(value[key].times_responded);
+              datasets[2].push(value[key].times_requested - value[key].times_responded);
+            }
+          }
+
+          const data = {
+            labels: datasets[0],
+            datasets: [
+              {
+                label: "Times Responded",
+                data: datasets[1],
+                backgroundColor: "#3466cb",
+              },
+              {
+                label: "Times Unresponded",
+                data: datasets[2],
+                backgroundColor: "#dc3913",
+              },
+            ]
+          };
+
+          const config = {
+            type: 'bar',
+            data: data,
+            options: {
+              onClick: (v) => {
+                console.log(v);
+              },
+              indexAxis: 'y',
+              plugins: {
+                title: {
+                  display: true,
+                  text: ''
                 },
-                ticks: {
-                  autoSkip: false,
+                legend: {
+                  position: 'right',
                 },
               },
-              isStacked: true,
-            };
-
-            const chart = new google.visualization.BarChart(document.getElementById('chart_div'));
-
-            const selectHandler = () => {
-              const selectedItem = chart.getSelection()[0];
-              if (selectedItem) {
-                try {
-                  const value = data.getValue(selectedItem.row, 0);
-                  document.getElementById(value).scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
-                } catch { }
+              responsive: true,
+              scales: {
+                x: {
+                  stacked: true,
+                  title: {
+                    display: true,
+                    text: "Reviews Requested/Responded",
+                  },
+                },
+                y: {
+                  stacked: true,
+                  title: {
+                    display: true,
+                    text: "Names",
+                  },
+                }
               }
             }
+          };
 
-            google.visualization.events.addListener(chart, 'select', selectHandler);
 
-            chart.draw(data, options);
+          const myChart = new Chart(
+            document.getElementById('chart_div'),
+            config
+          );
 
-            let inner = "";
+          let inner = "";
 
-            for (const key of Object.keys(value)) {
-              if (value[key].times_requested === 0) {
-                continue;
-              }
-              inner += `
+          for (const key of Object.keys(value)) {
+            if (value[key].times_requested === 0) {
+              continue;
+            }
+            inner += `
                 <article class="card" id="${key}">
                   <div class="percentages">
                     <div style="width: ${Math.ceil((value[key].times_responded / value[key].times_requested) * 100)}%;" class="bottom-percent">
@@ -355,18 +378,18 @@
                   </a>
                 </article>
                 `;
-            }
+          }
 
-            document.getElementById("stats_div").innerHTML = inner;
+          document.getElementById("stats_div").innerHTML = inner;
 
-            const pull_states = overall["pull_states"];
+          const pull_states = overall["pull_states"];
 
-            document.getElementById("open").style = `width: ${(pull_states["open"] / (pull_states["open"] + pull_states["draft"] + pull_states["merged"] + pull_states["closed"])) * 100}%;`;
-            document.getElementById("draft").style = `width: ${(pull_states["draft"] / (pull_states["open"] + pull_states["draft"] + pull_states["merged"] + pull_states["closed"])) * 100}%;`;
-            document.getElementById("merged").style = `width: ${(pull_states["merged"] / (pull_states["open"] + pull_states["draft"] + pull_states["merged"] + pull_states["closed"])) * 100}%;`;
-            document.getElementById("closed").style = `width: ${(pull_states["closed"] / (pull_states["open"] + pull_states["draft"] + pull_states["merged"] + pull_states["closed"])) * 100}%;`;
+          document.getElementById("open").style = `width: ${(pull_states["open"] / (pull_states["open"] + pull_states["draft"] + pull_states["merged"] + pull_states["closed"])) * 100}%;`;
+          document.getElementById("draft").style = `width: ${(pull_states["draft"] / (pull_states["open"] + pull_states["draft"] + pull_states["merged"] + pull_states["closed"])) * 100}%;`;
+          document.getElementById("merged").style = `width: ${(pull_states["merged"] / (pull_states["open"] + pull_states["draft"] + pull_states["merged"] + pull_states["closed"])) * 100}%;`;
+          document.getElementById("closed").style = `width: ${(pull_states["closed"] / (pull_states["open"] + pull_states["draft"] + pull_states["merged"] + pull_states["closed"])) * 100}%;`;
 
-            document.getElementById("pr-about").innerHTML = `
+          document.getElementById("pr-about").innerHTML = `
               <div class="large-title-area">
                   <b>Overall PR Statuses</b>
               </div> <br>
@@ -388,15 +411,15 @@
               </span>
               `;
 
-            const diffs = overall["diffs"]
+          const diffs = overall["diffs"]
 
-            console.log(diffs["removals"])
+          console.log(diffs["removals"])
 
-            if (diffs["additions"] !== 0 || diffs["removals"] !== 0) {
-              document.getElementById("add").style = `width: ${(diffs["additions"] / (diffs["additions"] + diffs["removals"])) * 100}%;`;
-              document.getElementById("remove").style = `width: ${(diffs["removals"] / (diffs["additions"] + diffs["removals"])) * 100}%;`;
+          if (diffs["additions"] !== 0 || diffs["removals"] !== 0) {
+            document.getElementById("add").style = `width: ${(diffs["additions"] / (diffs["additions"] + diffs["removals"])) * 100}%;`;
+            document.getElementById("remove").style = `width: ${(diffs["removals"] / (diffs["additions"] + diffs["removals"])) * 100}%;`;
 
-              document.getElementById("diff-about").innerHTML = `
+            document.getElementById("diff-about").innerHTML = `
                 <div class="large-title-area">
                     <b>Overall PR Diffs</b>
                 </div> <br>
@@ -417,16 +440,12 @@
                   ${Math.round(diffs["removals"] / (100 - pull_states["draft"]))}
                 </span> <br>
                 `;
-            } else {
-              document.getElementById("diff-card").remove();
-            }
-          })
-        }
-      )
-    }
-
-    google.charts.load('current', { packages: ['corechart', 'bar'] });
-    google.charts.setOnLoadCallback(loadAndDrawData);
+          } else {
+            document.getElementById("diff-card").remove();
+          }
+        })
+      }
+    )
   </script>
 </body>
 
