@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<header>
+    <title>GLARE</title>
+    <link rel="icon" href="https://github.com/getoutreach.png">
+    <style>
+        .chart-card {
+            border-radius: 2em;
+            box-shadow: 0 0.36em 2em rgb(52 67 77 / 20%);
+            background-color: white;
+            font-size: 2em;
+            position: relative;
+            transform: scale(0.9);
+            overflow: hidden;
+        }
+
+        .stats-area {
+            display: inline-flex;
+            flex-wrap: wrap;
+            width: 100%;
+            margin-top: 5%;
+        }
+
+        #section-title {
+            color: black;
+            font-family: Arial, Helvetica, sans-serif;
+            text-align: center;
+            font-size: 300%;
+        }
+
+        .percentages {
+            height: 5%;
+            display: inline-flex;
+            overflow: hidden;
+            border-radius: 2em 2em 0 0;
+            width: 100%;
+        }
+
+        #top-percent {
+            background-color: #dc3913;
+            color: white;
+            background-attachment: fixed;
+            text-align: center;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        #bottom-percent {
+            background-color: #3466cb;
+            color: white;
+            background-attachment: fixed;
+            text-align: center;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .info-area {
+            color: black;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: medium;
+            text-align: center;
+        }
+
+        .avatar-area {
+            flex: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 5%;
+        }
+
+        #avatar {
+            border-radius: 50%;
+            margin-right: 1%;
+            width: 75px;
+            height: 75px;
+            border: 1px solid black;
+        }
+
+        a {
+            text-decoration: none;
+            color: black;
+        }
+
+        #stats-area {
+            font-size: 40px;
+        }
+    </style>
+</header>
+
+<body>
+    <article id="chart_div" class="chart-card" style="height: 100vh">
+        <div class="percentages">
+            <div id="bottom-percent">
+            </div>
+            <div id="top-percent">
+            </div>
+        </div>
+        <div class="info-area">
+            <div class="avatar-area">
+                <img id="avatar"></img>
+                <a id="user-link">
+                    <h1 id="section-title"></h1>
+                </a>
+            </div> <br>
+            <div id="stats-area"></div>
+        </div>
+    </article>
+    <script>
+        fetch("/api/data").then(
+            (response) => {
+                response.json().then((fullData) => {
+                    const info = fullData["info"];
+                    const value = fullData["data"];
+
+                    const mostRequested = Object.keys(value).sort((a, b) => {
+                        if (value[b].times_requested - value[a].times_requested !== 0) {
+                            return value[b].times_requested - value[a].times_requested
+                        }
+                        if (value[a].times_responded > value[b].times_responded) {
+                            return -1
+                        }
+                        if (value[a].times_responded < value[b].times_responded) {
+                            return 1
+                        }
+                        return 0
+                    });
+
+                    const mostResponded = Object.keys(value).sort((a, b) => {
+                        return value[b].times_responded - value[a].times_responded
+                    });
+
+                    const responseRequestPercentage = Object.keys(value).sort((a, b) => {
+                        const aRequested = Math.ceil((value[a].times_responded / value[a].times_requested) * 100)
+                        const bRequested = Math.ceil((value[b].times_responded / value[b].times_requested) * 100)
+                        if (bRequested - aRequested !== 0) {
+                            return bRequested - aRequested
+                        }
+                        if (value[a].times_responded > value[b].times_responded) {
+                            return -1
+                        }
+                        if (value[a].times_responded < value[b].times_responded) {
+                            return 1
+                        }
+                        return 0
+                    });
+
+                    const path = window.location.pathname.substring(1);
+
+                    if (!value[path]) {
+                        document.getElementById("section-title").innerHTML = "User not found."
+                        return;
+                    }
+
+                    if (info.is_teams) {
+                        document.getElementById('avatar').remove();
+                        document.getElementById('user-link').href = `https://github.com/orgs/${info['owner']}/teams/${path}`;
+                    } else {
+                        document.getElementById('user-link').href = `https://github.com/${path}`;
+                        document.getElementById('avatar').src = `https://github.com/${path}.png`;
+                    }
+
+                    document.getElementById("section-title").innerHTML = path
+
+                    document.getElementById("top-percent").style = `width: ${Math.floor(((value[path].times_requested - value[path].times_responded) / value[path].times_requested) * 100)}%;`
+                    document.getElementById("bottom-percent").style = `width: ${Math.ceil((value[path].times_responded / value[path].times_requested) * 100)}%;`
+
+                    document.getElementById("stats-area").innerHTML = `
+                Request Response Percentage: ${Math.ceil((value[path].times_responded / value[path].times_requested) * 100)}% <br> <br>
+                Responded to 
+                <span style="color: #3466cb">
+                  ${value[path].times_responded}
+                </span>
+                out of
+                <span style="color: #dc3913">
+                  ${value[path].times_requested}
+                </span>
+                requests <br> <br>
+                <b>Placements:</b> <br>
+                Times requested placement: <span style="color: #3466cb">#${mostRequested.indexOf(path) + 1}</span> <br>
+                Times responded placement: <span style="color: #3466cb">#${mostResponded.indexOf(path) + 1}</span> <br>
+                Responded/Requested placement: <span style="color: #3466cb">#${responseRequestPercentage.indexOf(path) + 1}</span> <br>
+              `
+                })
+            }
+        )
+    </script>
+</body>
+
+</html>

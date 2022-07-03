@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html>
+<header>
+  <title>GLARE</title>
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    .card {
+      display: flex;
+      flex-direction: column;
+      border-radius: 2em;
+      height: 10em;
+      width: 10em;
+      box-shadow: 0 0.36em 2em rgb(52 67 77 / 20%);
+      background-color: white;
+      position: relative;
+      font-size: 2em;
+      margin-left: 1em;
+      margin-bottom: 3em;
+      transition: box-shadow 250ms;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      box-shadow: 0 1.36em 3em rgb(52 67 77 / 40%);
+    }
+
+    .overall-card {
+      display: flex;
+      flex-direction: column;
+      border-radius: 2em;
+      min-height: 20em;
+      width: 100%;
+      box-shadow: 0 0.36em 2em rgb(52 67 77 / 20%);
+      background-color: white;
+      position: relative;
+      font-size: 2em;
+      margin-bottom: 3em;
+      transition: box-shadow 250ms;
+      overflow: hidden;
+    }
+
+    .overall-card:hover {
+      box-shadow: 0 1.36em 3em rgb(52 67 77 / 40%);
+    }
+
+    .chart-card {
+      border-radius: 2em;
+      box-shadow: 0 0.36em 2em rgb(52 67 77 / 20%);
+      background-color: white;
+      font-size: 2em;
+      position: relative;
+      transform: scale(0.9);
+      overflow: hidden;
+    }
+
+    .stats-area {
+      display: inline-flex;
+      flex-wrap: wrap;
+      width: 100%;
+      margin-top: 5%;
+    }
+
+    .section-title {
+      color: black;
+      font-family: Arial, Helvetica, sans-serif;
+      text-align: center;
+      font-size: 300%;
+    }
+
+    .percentages {
+      height: 50%;
+      display: inline-flex;
+      overflow: hidden;
+    }
+
+    .top-percent {
+      background-color: #dc3913;
+      color: white;
+      background-attachment: fixed;
+      text-align: center;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .bottom-percent {
+      background-color: #3466cb;
+      color: white;
+      background-attachment: fixed;
+      text-align: center;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .draft-percent {
+      background-color: #6a737d;
+      color: white;
+      background-attachment: fixed;
+      text-align: center;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .merged-percent {
+      background-color: #6f42c1;
+      color: white;
+      background-attachment: fixed;
+      text-align: center;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .open-percent {
+      background-color: #22863a;
+      color: white;
+      background-attachment: fixed;
+      text-align: center;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .info-area {
+      margin-top: 5%;
+      color: black;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: medium;
+      text-align: center;
+    }
+
+    .large-info-area {
+      margin-top: 1%;
+      color: black;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: medium;
+      text-align: center;
+      font-size: 30px;
+    }
+
+    .avatar-area {
+      flex: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 5%;
+    }
+
+    .large-title-area {
+      flex: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1%;
+      font-size: 40px;
+    }
+
+    .avatar {
+      border-radius: 50%;
+      margin-right: 5%;
+      width: 30px;
+      height: 30px;
+      border: 1px solid black;
+    }
+
+    a {
+      text-decoration: none;
+      color: black;
+    }
+
+    .diff-add-percent {
+      background-color: #28a745;
+      color: white;
+      background-attachment: fixed;
+      text-align: center;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .close-remove-percent {
+      background-color: #d73a49;
+      color: white;
+      background-attachment: fixed;
+      text-align: center;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+  </style>
+</header>
+
+<body>
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <h1 class="section-title">Requests Reviewed and Responded</h1>
+  <article id="chart_div" class="chart-card" style="height: 95vh"></article>
+  <h1 class="section-title">Per-User Stats</h1>
+  <div id="stats_div" class="stats-area"></div>
+  <h1 class="section-title">Overall Stats</h1>
+  <div id="overall_div" class="stats-area">
+    <article class="overall-card">
+      <div class="percentages">
+        <div style="width: 0" class="open-percent" id="open">
+        </div>
+        <div style="width: 0" class="draft-percent" id="draft">
+        </div>
+        <div style="width: 0" class="merged-percent" id="merged">
+        </div>
+        <div style="width: 0" class="close-remove-percent" id="closed">
+        </div>
+      </div>
+      <div class="large-info-area" id="pr-about">
+      </div>
+    </article>
+    <article class="overall-card" id="diff-card">
+      <div class="percentages">
+        <div style="width: 0" class="diff-add-percent" id="add">
+        </div>
+        <div style="width: 0" class="close-remove-percent" id="remove">
+        </div>
+      </div>
+      <div class="large-info-area" id="diff-about">
+      </div>
+    </article>
+  </div>
+  <script>
+    const loadAndDrawData = () => {
+      fetch("/api/data").then(
+        (response) => {
+          response.json().then((fullData) => {
+            const info = fullData["info"];
+            const overall = fullData["overall"];
+            let value = fullData["data"];
+
+            const sortingMethod = (new URLSearchParams(window.location.search)).get('sort');
+
+            if (sortingMethod == 1) {
+              value = Object.keys(value).sort((a, b) => {
+                return value[b].times_responded - value[a].times_responded;
+              }).reduce(
+                (obj, key) => {
+                  obj[key] = value[key];
+                  return obj;
+                },
+                {}
+              );
+            } else if (sortingMethod == 2) {
+              value = Object.keys(value).sort((a, b) => {
+                const aRequested = Math.ceil((value[a].times_responded / value[a].times_requested) * 100);
+                const bRequested = Math.ceil((value[b].times_responded / value[b].times_requested) * 100);
+                if (bRequested - aRequested !== 0) {
+                  return bRequested - aRequested;
+                }
+                if (value[a].times_responded > value[b].times_responded) {
+                  return -1;
+                }
+                if (value[a].times_responded < value[b].times_responded) {
+                  return 1;
+                }
+                return 0;
+              }).reduce(
+                (obj, key) => {
+                  obj[key] = value[key];
+                  return obj;
+                },
+                {}
+              );
+            } else {
+              value = Object.keys(value).sort((a, b) => {
+                if (value[b].times_requested - value[a].times_requested !== 0) {
+                  return value[b].times_requested - value[a].times_requested
+                }
+                if (value[a].times_responded > value[b].times_responded) {
+                  return -1
+                }
+                if (value[a].times_responded < value[b].times_responded) {
+                  return 1
+                }
+                return 0
+              }).reduce(
+                (obj, key) => {
+                  obj[key] = value[key];
+                  return obj;
+                },
+                {}
+              );
+            }
+
+            const rows = [['Name', 'Reviews Responded', 'Reviews Unresponded', { role: 'annotation' }]];
+
+            for (const key of Object.keys(value)) {
+              if (value[key].times_requested) {
+                rows.push([key, value[key].times_responded, value[key].times_requested - value[key].times_responded, '']);
+              }
+            }
+
+            console.log(rows)
+
+            const data = google.visualization.arrayToDataTable(rows);
+
+            const options = {
+              title: '',
+              chartArea: { width: '75%' },
+              width: '100%',
+              height: '100%',
+              hAxis: {
+                title: 'Reviews Requested/Responded',
+                minValue: 0,
+              },
+              vAxis: {
+                title: 'Name',
+                textStyle: {
+                  fontSize: 10 // or the number you want
+                },
+                ticks: {
+                  autoSkip: false,
+                },
+              },
+              isStacked: true,
+            };
+
+            const chart = new google.visualization.BarChart(document.getElementById('chart_div'));
+
+            const selectHandler = () => {
+              const selectedItem = chart.getSelection()[0];
+              if (selectedItem) {
+                try {
+                  const value = data.getValue(selectedItem.row, 0);
+                  document.getElementById(value).scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+                } catch { }
+              }
+            }
+
+            google.visualization.events.addListener(chart, 'select', selectHandler);
+
+            chart.draw(data, options);
+
+            let inner = "";
+
+            for (const key of Object.keys(value)) {
+              if (value[key].times_requested === 0) {
+                continue;
+              }
+              inner += `
+                <article class="card" id="${key}">
+                  <div class="percentages">
+                    <div style="width: ${Math.ceil((value[key].times_responded / value[key].times_requested) * 100)}%;" class="bottom-percent">
+                    </div>
+                    <div style="width: ${Math.floor(((value[key].times_requested - value[key].times_responded) / value[key].times_requested) * 100)}%;" class="top-percent">
+                    </div>
+                  </div>
+                  <a href="/${key}">
+                    <div class="info-area">
+                      <div class="avatar-area">
+                        ${fullData["info"].is_teams ? `` : `<img class="avatar" src="https://github.com/${key}.png?size=40"></img>`}
+                          <b>${key}</b>
+                      </div> <br>
+                      Request Response Percentage: ${Math.ceil((value[key].times_responded / value[key].times_requested) * 100)}% <br> <br>
+                      Responded to 
+                      <span style="color: #3466cb">
+                        ${value[key].times_responded}
+                      </span>
+                      out of
+                      <span style="color: #dc3913">
+                        ${value[key].times_requested}
+                      </span>
+                      requests
+                    </div>
+                  </a>
+                </article>
+                `;
+            }
+
+            document.getElementById("stats_div").innerHTML = inner;
+
+            const pull_states = overall["pull_states"];
+
+            document.getElementById("open").style = `width: ${(pull_states["open"] / (pull_states["open"] + pull_states["draft"] + pull_states["merged"] + pull_states["closed"])) * 100}%;`;
+            document.getElementById("draft").style = `width: ${(pull_states["draft"] / (pull_states["open"] + pull_states["draft"] + pull_states["merged"] + pull_states["closed"])) * 100}%;`;
+            document.getElementById("merged").style = `width: ${(pull_states["merged"] / (pull_states["open"] + pull_states["draft"] + pull_states["merged"] + pull_states["closed"])) * 100}%;`;
+            document.getElementById("closed").style = `width: ${(pull_states["closed"] / (pull_states["open"] + pull_states["draft"] + pull_states["merged"] + pull_states["closed"])) * 100}%;`;
+
+            document.getElementById("pr-about").innerHTML = `
+              <div class="large-title-area">
+                  <b>Overall PR Statuses</b>
+              </div> <br>
+              PRs Open: 
+              <span style="color: #22863a">
+                ${pull_states["open"]}
+              </span> <br>
+              PRs Draft: 
+              <span style="color: #6a737d">
+                ${pull_states["draft"]}
+              </span> <br>
+              PRs Merged: 
+              <span style="color: #6f42c1">
+                ${pull_states["merged"]}
+              </span> <br>
+              PRs Closed: 
+              <span style="color: #d73a49">
+                ${pull_states["closed"]}
+              </span>
+              `;
+
+            const diffs = overall["diffs"]
+
+            console.log(diffs["removals"])
+
+            if (diffs["additions"] !== 0 || diffs["removals"] !== 0) {
+              document.getElementById("add").style = `width: ${(diffs["additions"] / (diffs["additions"] + diffs["removals"])) * 100}%;`;
+              document.getElementById("remove").style = `width: ${(diffs["removals"] / (diffs["additions"] + diffs["removals"])) * 100}%;`;
+
+              document.getElementById("diff-about").innerHTML = `
+                <div class="large-title-area">
+                    <b>Overall PR Diffs</b>
+                </div> <br>
+                Overall PR Additions: 
+                <span style="color: #28a745">
+                  ${diffs["additions"]}
+                </span> <br>
+                Overall PR Removals: 
+                <span style="color: #d73a49">
+                  ${diffs["removals"]}
+                </span> <br> <br>
+                Average PR Additions: 
+                <span style="color: #28a745">
+                  ${Math.round(diffs["additions"] / (100 - pull_states["draft"]))}
+                </span> <br>
+                Average PR Removals: 
+                <span style="color: #d73a49">
+                  ${Math.round(diffs["removals"] / (100 - pull_states["draft"]))}
+                </span> <br>
+                `;
+            } else {
+              document.getElementById("diff-card").remove();
+            }
+          })
+        }
+      )
+    }
+
+    google.charts.load('current', { packages: ['corechart', 'bar'] });
+    google.charts.setOnLoadCallback(loadAndDrawData);
+  </script>
+</body>
+
+</html>
