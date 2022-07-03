@@ -312,7 +312,12 @@ pub async fn aggregate_data(
         );
         std::io::stdout().flush()?;
     }
-    println!("{}: [{}] 100%", "Info".yellow(), "#".repeat(100).green());
+    println!(
+        "{}: [{}] {}%",
+        "Info".yellow(),
+        "#".repeat(100).green(),
+        "100".yellow()
+    );
     println!("{}: Aggregated PR data", "Info".yellow());
 
     let json_out = request_data_to_json(out);
